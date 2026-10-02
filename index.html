@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CORE · El juego</title>
+<style>
+html,body{margin:0;height:100%;background:#0a0c16;display:flex;align-items:center;justify-content:center}
+canvas{width:min(100vw,calc(100vh*1.6));aspect-ratio:8/5;height:auto;border-radius:10px;background:#10132a}
+</style>
+</head>
+<body>
+<canvas id="c" width="800" height="500" aria-label="Juego Core: muévete con las flechas del teclado"></canvas>
+<script>
+const cv=document.getElementById('c'),x=cv.getContext('2d'),W=800,H=500;
+const F='Georgia,"Times New Roman",serif',S='system-ui,sans-serif';
+const LV=[
+{n:'Nivel 1 · Identidad',c:'#6ec1ff',
+ intro:'La identidad es la conciencia de unos modos de ser, pensar y actuar que dan sentido a tu vida. Recoge lo que la constituye y esquiva las ideas que la disuelven.',
+ end:'Identidad = lo que soy, único y a la vez en relación con los demás (Álvarez-Munárriz).',
+ good:[['Conciencia','La conciencia es el núcleo de la identidad: permite enfocar la atención en tus propios pensamientos y sentimientos.'],
+ ['Singularidad','La identidad no es lo que te iguala a otros, sino lo que te hace único.'],
+ ['Relación con otros','La identidad es sustantiva y relacional: se construye en interacción con el grupo y el medio.'],
+ ['Continuidad','Sientes que lo vivido ayer, lo vives hoy y lo vivirás mañana: eso da unidad a tu trayectoria.'],
+ ['Núcleo estable','Puedes cambiar la forma del molde, pero no desprenderte de él: identidad es lo que soy, no lo que desearía ser.']],
+ bad:[['Autómata social','Reducir a la persona a un producto de la sociedad elimina su conciencia y su singularidad.'],
+ ['Solo roles','Si te identificas únicamente con tus roles, la persona se disuelve en la red social.'],
+ ['Reinventarme sin fin','Redefinirte perpetuamente para ser “otra persona” es un vano intento: no se deja de ser lo que se es.']]},
+{n:'Nivel 2 · Persona',c:'#ffb86b',
+ intro:'Una persona psicológicamente sana (Ellis) y con carácter (Hyatt) se moldea con lo que consume, con quién se relaciona y con los hábitos que adquiere. Recoge lo sano, evita lo contraproducente.',
+ end:'La persona se forma desde adentro: lo que consume, con quién anda y lo que repite cada día.',
+ good:[['Interés por sí mismo','Cree que vale al menos tanto como los demás y cuida su equilibrio físico, emocional e intelectual.'],
+ ['Tolera los errores','Todo el mundo tiene derecho a equivocarse, incluido uno mismo.'],
+ ['Responsable de sí','Resuelve sus problemas sin esperar que otros lo hagan por él y crea su propio autoconcepto.'],
+ ['Proyecto de vida','Vive el día a día, pero sin desviarse del camino a largo plazo que se ha trazado.'],
+ ['Relaciones elegidas','Eres el promedio de las personas con quienes más tiempo pasas: elígelas con intención.'],
+ ['Hábitos conscientes','Los hábitos son la expresión del carácter y se pueden elegir; pon una pausa entre estímulo y respuesta.']],
+ bad:[['Aprobación ajena','Medir tu valía por lo que otros dicen te convierte en un espejo sin imagen propia.'],
+ ['Culpar al exterior','Sano es no necesitar un enemigo exterior: tu vida depende de tu conducta y tus opciones.'],
+ ['Todo o nada','Los absolutos son imposibles; la persona sana acepta el término medio.'],
+ ['Vivir a la deriva','Sin intención, terminas en un grupo de pares que no elegiste y sin progreso.']]},
+{n:'Nivel 3 · Autoestima',c:'#c9a7ff',
+ intro:'La autoestima es el producto de prácticas internas (Branden). Recoge los seis pilares y evita lo que la erosiona. Ojo: ahora los obstáculos se mueven más rápido.',
+ end:'Desarrollar la autoestima es ampliar tu capacidad de ser feliz: te sientes competente para vivir y digno de ser feliz.',
+ good:[['Vivir conscientemente','Respetar la realidad sin negarla y estar presente en lo que haces mientras lo haces.'],
+ ['Aceptarse','No negar ni rechazar tus pensamientos, sentimientos y acciones: no te conviertes en tu propio enemigo.'],
+ ['Autorresponsabilidad','Eres autor de tus decisiones, tus compañías, tu trato a los demás y tu felicidad.'],
+ ['Autoafirmación','Respetar tus deseos y necesidades y expresarlos de forma asertiva, con dignidad.'],
+ ['Vivir con propósito','Identificar tus metas y actuar para alcanzarlas: así tú controlas tu vida.'],
+ ['Integridad','Ser congruente entre lo que piensas, dices y haces, y cumplir tus promesas.']],
+ bad:[['Auto-diálogo negativo','Destacar siempre lo que haces mal no conduce a nada bueno: busca también tus cualidades.'],
+ ['Compararme','Al compararte comparas superficies, no profundidades; úsalo solo como modelo constructivo.'],
+ ['Dependencia emocional','Es destructiva y agotadora: no se trata de cambiar al otro, sino de saber qué te hace feliz.'],
+ ['Sin límites','Los límites marcan la frontera de tu dignidad: lo que te hace sentir mal no es negociable.'],
+ ['Adicción a la aprobación','Si tu autoestima depende de elogios y críticas, quedas atrapado en un juego con reglas absurdas.']]}
+];
+let st='intro',li=0,P,items,got,total,lives,inv,toast={t:'',b:0,f:0},keys={};
+function rnd(a,b){return a+Math.random()*(b-a)}
+function start(){
+ const L=LV[li];x.font='bold 14px '+S;
+ P={x:W/2,y:H/2+40,r:14};got=0;lives=3;inv=0;total=L.good.length;items=[];toast.f=0;
+ const mk=(a,good)=>{const w=x.measureText(a[0]).width+22;let px,py,k=0;
+  do{px=rnd(w/2+10,W-w/2-10);py=rnd(80,H-30);k++}while(k<60&&(Math.hypot(px-P.x,py-P.y)<130||items.some(o=>Math.abs(o.x-px)<(o.w+w)/2+8&&Math.abs(o.y-py)<36)));
+  const a2=rnd(0,6.28),v=1+li*.45;
+  items.push({l:a[0],e:a[1],good,w,x:px,y:py,vx:good?0:Math.cos(a2)*v,vy:good?0:Math.sin(a2)*v})};
+ L.good.forEach(a=>mk(a,1));L.bad.forEach(a=>mk(a,0));st='play';
+}
+addEventListener('keydown',e=>{
+ if(!e.key.startsWith('Arrow'))return;e.preventDefault();keys[e.key]=1;
+ if((st==='intro'||st==='lose')&&e.key==='ArrowUp')start();
+ else if(st==='win'&&e.key==='ArrowRight'){li++;st=li>=LV.length?'end':'intro'}
+ else if(st==='end'&&e.key==='ArrowUp'){li=0;st='intro'}
+});
+addEventListener('keyup',e=>{delete keys[e.key]});
+function say(t,b){toast={t,b,f:260}}
+function update(){
+ const L=LV[li];
+ let dx=(keys.ArrowRight?1:0)-(keys.ArrowLeft?1:0),dy=(keys.ArrowDown?1:0)-(keys.ArrowUp?1:0);
+ if(dx&&dy){dx*=.707;dy*=.707}
+ P.x=Math.max(P.r,Math.min(W-P.r,P.x+dx*3.6));P.y=Math.max(P.r+40,Math.min(H-P.r,P.y+dy*3.6));
+ if(inv>0)inv--;if(toast.f>0)toast.f--;
+ for(let i=items.length-1;i>=0;i--){const o=items[i];
+  if(!o.good){o.x+=o.vx;o.y+=o.vy;
+   if(o.x-o.w/2<0||o.x+o.w/2>W)o.vx*=-1;if(o.y<70||o.y>H-14)o.vy*=-1}
+  const cx=Math.max(o.x-o.w/2,Math.min(P.x,o.x+o.w/2)),cy=Math.max(o.y-14,Math.min(P.y,o.y+14));
+  if(Math.hypot(P.x-cx,P.y-cy)<P.r){
+   if(o.good){items.splice(i,1);got++;say('✔ '+o.l+': '+o.e,1);if(got>=total)st='win'}
+   else if(inv<=0){lives--;inv=90;say('✘ '+o.l+': '+o.e,0);o.x=rnd(60,W-60);o.y=P.y<H/2?H-30:90;if(lives<=0)st='lose'}
+  }}
+}
+function wrap(t,px,py,mw,lh,al){const ws=t.split(' ');let ln='',y=py;x.textAlign=al||'left';
+ for(const w of ws){const tt=ln?ln+' '+w:w;if(x.measureText(tt).width>mw&&ln){x.fillText(ln,px,y);ln=w;y+=lh}else ln=tt}
+ x.fillText(ln,px,y);return y}
+function pill(o,col){x.font='bold 14px '+S;x.fillStyle=col+'22';x.strokeStyle=col;x.lineWidth=2;
+ x.beginPath();x.roundRect(o.x-o.w/2,o.y-14,o.w,28,14);x.fill();x.stroke();
+ x.fillStyle='#f3f4fb';x.textAlign='center';x.textBaseline='middle';x.fillText(o.l,o.x,o.y+1);x.textBaseline='alphabetic'}
+function overlay(col,title,body,hint){
+ x.fillStyle='#0a0c16ee';x.fillRect(0,0,W,H);
+ x.fillStyle=col;x.font='bold 34px '+F;x.textAlign='center';x.fillText(title,W/2,170);
+ x.fillStyle='#e6e8f5';x.font='18px '+F;wrap(body,W/2,215,560,28,'center');
+ x.fillStyle=col;x.font='bold 15px '+S;x.fillText(hint,W/2,H-60);
+ x.beginPath();x.arc(W/2,100,18,0,6.28);x.fillStyle=col;x.shadowColor=col;x.shadowBlur=24;x.fill();x.shadowBlur=0}
+function draw(){
+ const L=LV[li]||LV[2];x.clearRect(0,0,W,H);x.fillStyle='#10132a';x.fillRect(0,0,W,H);
+ x.fillStyle='#ffffff10';for(let i=0;i<W;i+=40)for(let j=60;j<H;j+=40)x.fillRect(i,j,2,2);
+ if(st==='intro'&&li<LV.length){overlay(L.c,L.n,L.intro+'  Conceptos con borde de color: recógelos. Rojos: esquívalos.','Pulsa ↑ para empezar · muévete con ← ↑ → ↓');return}
+ if(st==='end'){overlay('#ffd479','¡Core completo!','Recorriste identidad, persona y autoestima. Conocerte, formarte con intención y valorarte: ese es tu núcleo.','Pulsa ↑ para jugar de nuevo');return}
+ if(items){items.forEach(o=>pill(o,o.good?L.c:'#ff6b7a'))}
+ if(P){const a=inv>0&&Math.floor(inv/6)%2;x.save();x.globalAlpha=a?.35:1;
+  x.shadowColor='#ffd479';x.shadowBlur=26;x.fillStyle='#ffd479';x.beginPath();x.arc(P.x,P.y,P.r,0,6.28);x.fill();x.shadowBlur=0;
+  x.strokeStyle=L.c;x.lineWidth=4;x.beginPath();x.arc(P.x,P.y,P.r+8,-1.57,-1.57+6.283*got/total);x.stroke();x.restore()}
+ x.fillStyle='#0a0c16';x.fillRect(0,0,W,52);
+ x.fillStyle=L.c;x.font='bold 18px '+F;x.textAlign='left';x.fillText(L.n,16,32);
+ x.fillStyle='#e6e8f5';x.font='15px '+S;x.textAlign='right';x.fillText('Conceptos '+got+'/'+total+'   Vidas '+'♥'.repeat(Math.max(lives,0))+'♡'.repeat(Math.max(3-lives,0)),W-16,32);
+ if(toast.f>0&&st==='play'){x.globalAlpha=Math.min(1,toast.f/30);x.fillStyle=toast.b?'#14301f':'#3a1620';x.fillRect(20,H-74,W-40,58);
+  x.fillStyle=toast.b?'#8ff0b0':'#ff9aa5';x.font='14px '+S;wrap(toast.t,32,H-50,W-64,19);x.globalAlpha=1}
+ if(st==='win')overlay(L.c,'¡Nivel completado!',L.end,li<LV.length-1?'Pulsa → para el siguiente nivel':'Pulsa → para ver el final');
+ if(st==='lose')overlay('#ff6b7a','Te quedaste sin vidas','Repasa lo que te enseñó cada concepto e inténtalo de nuevo.','Pulsa ↑ para reintentar el nivel');
+}
+(function loop(){if(st==='play')update();draw();requestAnimationFrame(loop)})();
+</script>
+</body>
+</html>
